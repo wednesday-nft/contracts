@@ -35,7 +35,7 @@ contract ADDAMS is IERC20Metadata, AccessControl {
 
     bool private inSwap;
 
-    uint256 public feeCounter;
+    uint256 public feeCounter = 0;
     uint256 public feeLimit = 8;
 
     uint256 public burnFeeBuyRate;
@@ -79,7 +79,6 @@ contract ADDAMS is IERC20Metadata, AccessControl {
     event TokenRecovered(address _address, uint256 _amount);
     event ExcludedFromFee(address _address, bool _isExcludedFromFee);
     event ExcludedFromSwap(address _address, bool _isExcludedFromSwap);
-    event DistributionUpdated(address _distribution);
     event RewardSwapReceiversUpdated(address[] _rewardSwapReceivers, uint256[] _rewardSwapReceiversRate);
     event RewardSellRateUpdated(uint256 _rewardSellRate);
     event RewardBuyRateUpdated(uint256 _rewardBuyRate);
@@ -112,9 +111,10 @@ contract ADDAMS is IERC20Metadata, AccessControl {
 
         _mint(msg.sender, _totalSupply * 10 ** 18);
 
-        setDistribution(_distribution);
+        require(address(_distribution) != address(0), "zero distribution address");
+        distribution = _distribution;
 
-        require(_rewardSwapAddress != address(0), "zero reward swap address");
+        require(_rewardSwapAddress != address(0), "zero reward swap address.");
         rewardSwapAddress = _rewardSwapAddress;
 
         updateRouterAndPair(_router, _token1);
@@ -212,13 +212,6 @@ contract ADDAMS is IERC20Metadata, AccessControl {
         emit ExcludedFromSwap(_address, _isExcludedFromSwap);
     }
 
-    function setDistribution(IDistribution _distribution) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(address(_distribution) != address(0), "zero distribution address");
-        distribution = _distribution;
-
-        emit DistributionUpdated(address(_distribution));
-    }
-
     function setRewardSwapReceivers(address[] calldata _rewardSwapReceivers, uint256[] calldata _rewardSwapReceiversRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_rewardSwapReceivers.length == _rewardSwapReceiversRate.length, "size");
 
@@ -263,7 +256,7 @@ contract ADDAMS is IERC20Metadata, AccessControl {
     }
 
     function updateBuyRates(uint256 _burnFeeBuyRate, uint256 _liquidityFeeBuyRate, uint256 _swapFeeBuyRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_burnFeeBuyRate.add(_liquidityFeeBuyRate).add(_swapFeeBuyRate) <= 2400, "rate");
+        require(_burnFeeBuyRate.add(_liquidityFeeBuyRate).add(_swapFeeBuyRate) <= 900, "rate");
 
         burnFeeBuyRate = _burnFeeBuyRate;
         liquidityFeeBuyRate = _liquidityFeeBuyRate;
@@ -273,7 +266,7 @@ contract ADDAMS is IERC20Metadata, AccessControl {
     }
 
     function updateSellRates(uint256 _burnFeeSellRate, uint256 _liquidityFeeSellRate, uint256 _swapFeeSellRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_burnFeeSellRate.add(_liquidityFeeSellRate).add(_swapFeeSellRate) <= 2400, "rate");
+        require(_burnFeeSellRate.add(_liquidityFeeSellRate).add(_swapFeeSellRate) <= 900, "rate");
 
         burnFeeSellRate = _burnFeeSellRate;
         liquidityFeeSellRate = _liquidityFeeSellRate;
@@ -283,7 +276,7 @@ contract ADDAMS is IERC20Metadata, AccessControl {
     }
 
     function updateTransferRates(uint256 _burnFeeTransferRate, uint256 _liquidityFeeTransferRate, uint256 _swapFeeTransferRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_burnFeeTransferRate.add(_liquidityFeeTransferRate).add(_swapFeeTransferRate) <= 2400, "rate");
+        require(_burnFeeTransferRate.add(_liquidityFeeTransferRate).add(_swapFeeTransferRate) <= 900, "rate");
 
         burnFeeTransferRate = _burnFeeTransferRate;
         liquidityFeeTransferRate = _liquidityFeeTransferRate;
@@ -380,17 +373,6 @@ contract ADDAMS is IERC20Metadata, AccessControl {
         enabledSwapForSell = _enabledSwapForSell;
 
         emit EnabledSwapForSellUpdated(_enabledSwapForSell);
-    }
-
-    function burn(uint256 _amount) external {
-        _burn(msg.sender, _amount);
-    }
-
-    function burnFrom(address _account, uint256 _amount) external {
-        uint256 currentAllowance = allowance(_account, msg.sender);
-        require(currentAllowance >= _amount, "ERC20: burn amount exceeds allowance");
-        _approve(_account, msg.sender, currentAllowance.sub(_amount));
-        _burn(_account, _amount);
     }
 
     function _transfer(address _sender, address _recipient, uint256 _amount) internal {
